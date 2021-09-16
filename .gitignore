@@ -13,3 +13,6 @@ __pycache__
 
 # Ignore jupyter lab notebooks
 *.ipynb*
+
+# Ignore geckodriver.log
+geckodriver.log
