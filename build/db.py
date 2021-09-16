@@ -5,7 +5,7 @@ import csv
 Interface for managing the database.
 '''
 
-DATABASE = '../data/abstractdb.sqlite'
+DATABASE = 'data/abstractdb.sqlite'
 
 class Connection():
     '''Database connection object for pandas to_sql and read_sql methods'''
@@ -177,3 +177,40 @@ def create_all_tables():
     create_contract_table()
     create_bid_table()
     create_bidder_table()
+
+def query_all():
+    '''Returns SQL statement for selecting bids for all years and all locations.'''
+    sql_query = '''
+    SELECT 
+    Contract.Year, Contract.District, Contract.County, Bid.ContractID, 
+    Bid.ItemID, Item.Description, Item.Unit, Bid.Quantity, 
+    Bid.Engineer_UnitPrice, Bid.Engineer_TotalPrice, 
+    Bid.BidderID_0_UnitPrice, Bid.BidderID_0_TotalPrice, 
+    Bid.BidderID_1_UnitPrice, Bid.BidderID_1_TotalPrice,
+    Bid.BidderID_2_UnitPrice, Bid.BidderID_2_TotalPrice
+
+    FROM Bid 
+
+    JOIN Contract ON Bid.ContractID = Contract.ContractID,
+    Item ON Bid.ItemID = Item.ItemID
+
+    '''
+
+    return sql_query
+
+def query_by_district(district: str):
+    '''Returns SQL statment for selecting bids for all years in a select district.
+    District names are in Proper case.'''
+    sql_query = query_all() + 'WHERE Contract.District = "' + district.capitalize() + '"'
+    return sql_query
+
+def query_by_county(county: str):
+    '''Returns SQL statment for selecting bids for all years in a select county.
+    County names are in all upper case.'''
+    sql_query = query_all() + 'WHERE Contract.County = "' + county.upper() + '"'
+    return sql_query
+
+def query_by_year(year: int):
+    '''Returns SQL statment for selecting bids for a select year.'''
+    sql_query = query_all() + 'WHERE Contract.Year = ' + str(year)
+    return sql_query
