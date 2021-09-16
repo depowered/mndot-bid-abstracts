@@ -5,7 +5,7 @@ import csv
 Interface for managing the database.
 '''
 
-DATABASE = './data/abstractdb.sqlite'
+DATABASE = '../data/abstractdb.sqlite'
 
 class Connection():
     '''Database connection object for pandas to_sql and read_sql methods'''
