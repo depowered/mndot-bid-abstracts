@@ -2,18 +2,20 @@ import pandas as pd
 from build.db import Connection
 from abc import ABC
 
-transport_list_query = '''
-SELECT Item.ItemID, Item.Description, Item.Unit
-FROM Item'''
+class TransportList():
+    df: pd.DataFrame
+    query: str = '''
+    SELECT Item.ItemID, Item.Description, Item.Unit
+    FROM Item'''
 
-with Connection() as conn:
-    df_transport = pd.read_sql(transport_list_query, conn, index_col='ItemID')
+    def __init__(self) -> None:
+        with Connection() as conn:
+            self.df = pd.read_sql(self.query, conn, index_col='ItemID')
 
 class WeightedAverage():
     '''Base class for calculating and exporting weighted average bid prices.'''
     df_in: pd.DataFrame
     df_out: pd.DataFrame
-    df_transport: pd.DataFrame
     years = [2021, 2020, 2019, 2018]
     where_clause: str 
     base_query: str = '''
@@ -38,7 +40,8 @@ class WeightedAverage():
         with Connection() as conn:
             self.df_in = pd.read_sql(query, conn)
 
-        self.df_out = df_transport.copy()
+        transport_list = TransportList()
+        self.df_out = transport_list.df
         for year in self.years:
             self.append_year_to_df_out(year)
 
