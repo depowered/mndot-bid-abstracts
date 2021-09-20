@@ -34,27 +34,49 @@ class BidData():
 
     WHERE Contract.Year >= 2018'''
 
-    def __init__(self) -> None:
+    def __init__(self, district: str = None, county: str = None) -> None:
+        if district:
+            self.query = self.query + ' AND Contract.District = "' + district + '"'
+        elif county:
+            self.query = self.query + ' AND Contract.County = "' + county + '"'
+        else:
+            pass # use unmodified self.query
+
         with Connection() as conn:
             self.df = pd.read_sql(self.query, conn)
 
-    def get_df_by_year(self, year: int):
+    def get_df_by_year(self, year: int) -> pd.DataFrame:
         '''Returns a dataframe filtered by year.'''
 
         filt = self.df['Year'] == year
         return self.df[filt].copy()
 
+    def get_df_by_district(self, county: str) -> pd.DataFrame:
+        '''Returns a dataframe filtered by district.
+        District Options: "Baxter", "Bemidji", "Detroit Lakes", "Duluth", "Mankato",
+        "Metro", "Rochester", "Willmar".'''
+
+        filt = self.df['District'] == county.capitalize()
+        return self.df[filt].copy()
+
 class WeightedAverage():
     '''Base class for calculating and exporting weighted average bid prices.'''
 
-    df_out: pd.DataFrame
+    df: pd.DataFrame
 
-    def __init__(self) -> None:
-        self.bid_data = BidData()
+    def __init__(self, district: str = None, county: str = None) -> None:
+        # self.bid_data = BidData()
         self.item_list = ItemList()
         years = [2021, 2020, 2019, 2018]
 
-        self.df_out = self.item_list.df.copy()
+        if district:
+            self.bid_data = BidData(district=district)
+        elif county:
+            raise NotImplemented
+        else:
+            self.bid_data = BidData()
+
+        self.df = self.item_list.df.copy()
         for year in years:
             self.append_year_to_df_out(year)
 
@@ -96,16 +118,19 @@ class WeightedAverage():
             contract_occur_column = str(year) + '_' + bidder + '_ContractOccurance'
             weighted_uprice_column = str(year) + '_' + bidder + '_WeightedUnitPrice'
             
-            self.df_out[contract_occur_column] = self.calc_contract_occur(df_year, bidder)
-            self.df_out[weighted_uprice_column] = self.calc_weighted_avg(df_year, bidder)
+            self.df[contract_occur_column] = self.calc_contract_occur(df_year, bidder)
+            self.df[weighted_uprice_column] = self.calc_weighted_avg(df_year, bidder)
 
     def to_csv(self, filename: str):
-        self.df_out.to_csv(filename)
+        self.df.to_csv(filename)
 
-wt_avg = WeightedAverage()
-print(wt_avg.df_out.info())
+# wt_avg = WeightedAverage()
+# print(wt_avg.df.info())
 # wt_avg.to_csv('weighted_avg.csv')
 
 # bid_data = BidData()
 # bid_data_2021 = bid_data.get_df_by_year(2021)
 # print(bid_data_2021.info())
+
+# wt_avg_metro = WeightedAverage(district='Metro')
+# print(wt_avg_metro.df.info())
