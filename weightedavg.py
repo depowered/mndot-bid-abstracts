@@ -36,9 +36,9 @@ class BidData():
 
     def __init__(self, district: str = None, county: str = None) -> None:
         if district:
-            self.query = self.query + ' AND Contract.District = "' + district + '"'
+            self.query = self.query + ' AND Contract.District = "' + district.capitalize() + '"'
         elif county:
-            self.query = self.query + ' AND Contract.County = "' + county + '"'
+            self.query = self.query + ' AND Contract.County = "' + county.upper() + '"'
         else:
             pass # use unmodified self.query
 
@@ -51,28 +51,21 @@ class BidData():
         filt = self.df['Year'] == year
         return self.df[filt].copy()
 
-    def get_df_by_district(self, county: str) -> pd.DataFrame:
-        '''Returns a dataframe filtered by district.
-        District Options: "Baxter", "Bemidji", "Detroit Lakes", "Duluth", "Mankato",
-        "Metro", "Rochester", "Willmar".'''
-
-        filt = self.df['District'] == county.capitalize()
-        return self.df[filt].copy()
-
 class WeightedAverage():
     '''Base class for calculating and exporting weighted average bid prices.'''
 
     df: pd.DataFrame
+    bid_data: BidData
+    item_list: ItemList
 
     def __init__(self, district: str = None, county: str = None) -> None:
-        # self.bid_data = BidData()
         self.item_list = ItemList()
         years = [2021, 2020, 2019, 2018]
 
         if district:
             self.bid_data = BidData(district=district)
         elif county:
-            raise NotImplemented
+            self.bid_data = BidData(county=county)
         else:
             self.bid_data = BidData()
 
@@ -124,13 +117,10 @@ class WeightedAverage():
     def to_csv(self, filename: str):
         self.df.to_csv(filename)
 
-# wt_avg = WeightedAverage()
-# print(wt_avg.df.info())
-# wt_avg.to_csv('weighted_avg.csv')
+def main():
+    # calculate and export unfiltered weighted averages
+    wgt_avg = WeightedAverage()
+    wgt_avg.to_csv('weighted_avg_all.csv')
 
-# bid_data = BidData()
-# bid_data_2021 = bid_data.get_df_by_year(2021)
-# print(bid_data_2021.info())
-
-# wt_avg_metro = WeightedAverage(district='Metro')
-# print(wt_avg_metro.df.info())
+if __name__ == '__main__':
+    main()
