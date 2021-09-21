@@ -1,6 +1,5 @@
 import pandas as pd
 from build.db import Connection
-from abc import ABC
 
 class ItemList():
     '''Columns of the transport list from the Items table.'''
