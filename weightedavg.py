@@ -118,8 +118,14 @@ class WeightedAverage():
 
 def main():
     # calculate and export unfiltered weighted averages
-    wgt_avg = WeightedAverage()
-    wgt_avg.to_csv('weighted_avg_all.csv')
+    wgt_avg_all = WeightedAverage()
+    wgt_avg_all.to_csv('weighted_avg_all.csv')
+
+    wgt_avg_d3 = WeightedAverage(district='Baxter')
+    wgt_avg_d3.to_csv('weighted_avg_d3.csv')
+
+    wgt_avg_morrison = WeightedAverage(county='morrison')
+    wgt_avg_morrison.to_csv('weighted_avg_morrison.csv')
 
 if __name__ == '__main__':
     main()
