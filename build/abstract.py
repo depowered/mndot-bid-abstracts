@@ -7,6 +7,7 @@ from db import Cursor, Connection
 
 BASE_URL = 'http://transport.dot.state.mn.us/PostLetting/abstractCSV.aspx?ContractId='
 
+
 class Abstract():
     '''A Bid Abstract.
     Requests csv data from MnDOT's Abstracts for Awarded Jobs web app. 
@@ -40,14 +41,16 @@ class Abstract():
 
             # Split the resonse data by blank lines to divide into its three subtables
             blank_line_regex = r"(?:\r?\n){2,}"
-            self.contract_str, self.bid_str, self.bidder_str = re.split(blank_line_regex, self.response.text)
+            self.contract_str, self.bid_str, self.bidder_str = re.split(
+                blank_line_regex, self.response.text)
         except requests.exceptions.RequestException as e:
             raise SystemExit(e)
 
     def get_df(self):
-        self.contract_df = pd.read_csv( StringIO(self.contract_str) )
-        self.bid_df = pd.read_csv( StringIO(self.bid_str) )
-        self.bidder_df = pd.read_csv( StringIO(self.bidder_str) )
+        self.contract_df = pd.read_csv(StringIO(self.contract_str))
+        self.bid_df = pd.read_csv(StringIO(self.bid_str))
+        self.bidder_df = pd.read_csv(StringIO(self.bidder_str))
+
 
 class AbstractTable(ABC):
     '''Base class for abstract sub tables.'''
@@ -70,6 +73,7 @@ class AbstractTable(ABC):
         # Class: classname, Rows: rowcount, Columns: columncount
         return f'Class: {str(self.__class__).split(".")[1][:-2]}, Rows: {self.sql_df.shape[0]}, Columns: {self.sql_df.shape[1]}'
 
+
 class ContractTable(AbstractTable):
     '''Transforms the raw contract dataframe into a format the matches the destination SQL table schema.'''
 
@@ -87,7 +91,8 @@ class ContractTable(AbstractTable):
 
         # Fill table
         self.sql_df['ContractID'] = self.ab.contract_df['Contract Id']
-        self.sql_df['Year'] = self.ab.contract_df['Letting Date'].apply([lambda x: int(x[-4:])])
+        self.sql_df['Year'] = self.ab.contract_df['Letting Date'].apply(
+            [lambda x: int(x[-4:])])
         self.sql_df['LetDate'] = self.ab.contract_df['Letting Date']
         self.sql_df['SPNumber'] = self.ab.contract_df['SP Number']
         self.sql_df['District'] = self.ab.contract_df['District']
@@ -110,9 +115,12 @@ class ContractTable(AbstractTable):
         '''Inserts the sql formatted dataframe into the database.'''
 
         with Connection() as conn:
-            self.sql_df.to_sql('TempContract', conn, if_exists='replace', index=False)
+            self.sql_df.to_sql('TempContract', conn,
+                               if_exists='replace', index=False)
         with Cursor() as cur:
-            cur.execute('INSERT OR IGNORE INTO Contract SELECT * FROM TempContract')
+            cur.execute(
+                'INSERT OR IGNORE INTO Contract SELECT * FROM TempContract')
+
 
 class BidTable(ContractTable):
     '''Transforms the raw bid dataframe into a format the matches the destination SQL table schema.'''
@@ -123,16 +131,16 @@ class BidTable(ContractTable):
     @staticmethod
     def price_to_float(price):
         '''Convert unit price string to float'''
-        return float(price.strip().replace('$','').replace(',',''))
+        return float(price.strip().replace('$', '').replace(',', ''))
 
     @staticmethod
     def item_str_to_int(item_str):
         '''Convert ItemNumber string to int'''
-        return int(item_str.replace('/',''))
+        return int(item_str.replace('/', ''))
 
     def get_unique_id(self, item_str):
         '''Generate a unique bid id by concatenating ContractID and ItemNumber, removing the '/' and casting to int'''
-        unique_id = str(self.ab.contract_id) + item_str.replace('/','')
+        unique_id = str(self.ab.contract_id) + item_str.replace('/', '')
         return int(unique_id)
 
     def get_sql_df(self):
@@ -144,30 +152,38 @@ class BidTable(ContractTable):
         self.sql_df = pd.DataFrame()
 
         # Fill table
-        self.sql_df['BidID'] = self.ab.bid_df['ItemNumber'].apply(self.get_unique_id)
+        self.sql_df['BidID'] = self.ab.bid_df['ItemNumber'].apply(
+            self.get_unique_id)
         self.sql_df['ContractID'] = self.ab.bid_df['ContractId']
-        self.sql_df['ItemID'] = self.ab.bid_df['ItemNumber'].apply(self.item_str_to_int)
+        self.sql_df['ItemID'] = self.ab.bid_df['ItemNumber'].apply(
+            self.item_str_to_int)
         self.sql_df['Quantity'] = self.ab.bid_df['Quantity']
         self.sql_df['Engineer_UnitPrice'] = self.ab.bid_df['Engineers (Unit Price)']
         self.sql_df['Engineer_TotalPrice'] = self.ab.bid_df['Engineers (Extended Amount)']
 
         # Selects the lowest bidder unit prices and item totals
-        self.sql_df['BidderID_0_UnitPrice'] = self.ab.bid_df.iloc[:,10].apply(self.price_to_float)
-        self.sql_df['BidderID_0_TotalPrice'] = self.ab.bid_df.iloc[:,11].apply(self.price_to_float)
+        self.sql_df['BidderID_0_UnitPrice'] = self.ab.bid_df.iloc[:, 10].apply(
+            self.price_to_float)
+        self.sql_df['BidderID_0_TotalPrice'] = self.ab.bid_df.iloc[:, 11].apply(
+            self.price_to_float)
 
         # Verify that there is a second lowest bidder
         if num_columns > 12:
-            self.sql_df['BidderID_1_UnitPrice'] = self.ab.bid_df.iloc[:,12].apply(self.price_to_float)
-            self.sql_df['BidderID_1_TotalPrice'] = self.ab.bid_df.iloc[:,13].apply(self.price_to_float)
-        else: # Fill both Series with NaN
+            self.sql_df['BidderID_1_UnitPrice'] = self.ab.bid_df.iloc[:, 12].apply(
+                self.price_to_float)
+            self.sql_df['BidderID_1_TotalPrice'] = self.ab.bid_df.iloc[:, 13].apply(
+                self.price_to_float)
+        else:  # Fill both Series with NaN
             self.sql_df['BidderID_1_UnitPrice'] = pd.Series(dtype='float')
             self.sql_df['BidderID_1_TotalPrice'] = pd.Series(dtype='float')
 
         # Verify that there is a thrid lowest bidder
         if num_columns > 14:
-            self.sql_df['BidderID_2_UnitPrice'] = self.ab.bid_df.iloc[:,14].apply(self.price_to_float)
-            self.sql_df['BidderID_2_TotalPrice'] = self.ab.bid_df.iloc[:,15].apply(self.price_to_float)
-        else: # Fill Series with NaN
+            self.sql_df['BidderID_2_UnitPrice'] = self.ab.bid_df.iloc[:, 14].apply(
+                self.price_to_float)
+            self.sql_df['BidderID_2_TotalPrice'] = self.ab.bid_df.iloc[:, 15].apply(
+                self.price_to_float)
+        else:  # Fill both Series with NaN
             self.sql_df['BidderID_2_UnitPrice'] = pd.Series(dtype='float')
             self.sql_df['BidderID_2_TotalPrice'] = pd.Series(dtype='float')
 
@@ -175,9 +191,11 @@ class BidTable(ContractTable):
         '''Inserts the sql formatted dataframe into the database.'''
 
         with Connection() as conn:
-            self.sql_df.to_sql('TempBid', conn, if_exists='replace', index=False)
+            self.sql_df.to_sql(
+                'TempBid', conn, if_exists='replace', index=False)
         with Cursor() as cur:
             cur.execute('INSERT OR IGNORE INTO Bid SELECT * FROM TempBid')
+
 
 class BidderTable(AbstractTable):
     '''Transforms the raw bidder dataframe into a format the matches the destination SQL table schema.'''
@@ -190,7 +208,7 @@ class BidderTable(AbstractTable):
     def get_sql_df(self):
         '''Builds dataframe for inserting into Bidder SQL table.'''
 
-        # Intialize an empty df to store data for Bidder SQL table
+        # Initialize an empty df to store data for Bidder SQL table
         self.sql_df = pd.DataFrame()
 
         # Fill table
@@ -201,9 +219,11 @@ class BidderTable(AbstractTable):
         '''Inserts the sql formatted dataframe into the database.'''
 
         with Connection() as conn:
-            self.sql_df.to_sql('TempBidder', conn, if_exists='replace', index=False)
+            self.sql_df.to_sql('TempBidder', conn,
+                               if_exists='replace', index=False)
         with Cursor() as cur:
-            cur.execute('INSERT OR IGNORE INTO Bidder SELECT * FROM TempBidder')
+            cur.execute(
+                'INSERT OR IGNORE INTO Bidder SELECT * FROM TempBidder')
 
 # basic tests
 # ab = Abstract(200131)

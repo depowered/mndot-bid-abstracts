@@ -1,6 +1,7 @@
 import pandas as pd
 from build.db import Connection
 
+
 class ItemList():
     '''Columns of the transport list from the Items table.'''
 
@@ -12,6 +13,7 @@ class ItemList():
     def __init__(self) -> None:
         with Connection() as conn:
             self.df = pd.read_sql(self.query, conn, index_col='ItemID')
+
 
 class BidData():
     '''Bid data with functions for serving filtered dataframes.'''
@@ -39,7 +41,7 @@ class BidData():
         elif county:
             self.query = self.query + ' AND Contract.County = "' + county.upper() + '"'
         else:
-            pass # use unmodified self.query
+            pass  # use unmodified self.query
 
         with Connection() as conn:
             self.df = pd.read_sql(self.query, conn)
@@ -49,6 +51,7 @@ class BidData():
 
         filt = self.df['Year'] == year
         return self.df[filt].copy()
+
 
 class WeightedAverage():
     '''Base class for calculating and exporting weighted average bid prices.'''
@@ -75,30 +78,30 @@ class WeightedAverage():
     def filter_by_bidder(self, df_in: pd.DataFrame, bidder: str):
         '''Returns a GroupBy object filtered by bidder and grouped by ItemID.
         Bidder options: "Engineer", "BidderID_0", "BidderID_1", "BidderID_2".'''
-        
+
         column = bidder + '_TotalPrice'
-        filt = df_in[column].notna() # filter df_in for specified bidder
-        df_filt = df_in[filt] 
+        filt = df_in[column].notna()  # filter df_in for specified bidder
+        df_filt = df_in[filt]
 
         return df_filt.groupby(['ItemID'])
 
     def calc_contract_occur(self, df_in: pd.DataFrame, bidder: str):
         '''Returns a series of the contract occurnace count for all items for a given bidder.
         Bidder options: "Engineer", "BidderID_0", "BidderID_1", "BidderID_2".'''
-        
+
         column = bidder + '_TotalPrice'
         grp = self.filter_by_bidder(df_in, bidder)
-        
+
         return grp[column].count()
 
     def calc_weighted_avg(self, df_in: pd.DataFrame, bidder: str):
         '''Returns the weighted average for all items for a given bidder.
         Bidder options: "Engineer", "BidderID_0", "BidderID_1", "BidderID_2".'''
-        
+
         column = bidder + '_TotalPrice'
         grp = self.filter_by_bidder(df_in, bidder)
-        
-        return ( grp[column].sum() / grp['Quantity'].sum() ).round(2)
+
+        return (grp[column].sum() / grp['Quantity'].sum()).round(2)
 
     def append_year_to_df_out(self, year: int):
         '''Appends ContractOccurance and WeightedUnitPrice columns to df_out.'''
@@ -109,12 +112,15 @@ class WeightedAverage():
         for bidder in bidders:
             contract_occur_column = str(year) + '_' + bidder + '_ContractOccurance'
             weighted_uprice_column = str(year) + '_' + bidder + '_WeightedUnitPrice'
-            
-            self.df[contract_occur_column] = self.calc_contract_occur(df_year, bidder)
-            self.df[weighted_uprice_column] = self.calc_weighted_avg(df_year, bidder)
+
+            self.df[contract_occur_column] = self.calc_contract_occur(
+                df_year, bidder)
+            self.df[weighted_uprice_column] = self.calc_weighted_avg(
+                df_year, bidder)
 
     def to_csv(self, filename: str):
         self.df.to_csv(filename)
+
 
 def main():
     # calculate and export unfiltered weighted averages
@@ -126,6 +132,7 @@ def main():
 
     wgt_avg_morrison = WeightedAverage(county='morrison')
     wgt_avg_morrison.to_csv('weighted_avg_morrison.csv')
+
 
 if __name__ == '__main__':
     main()

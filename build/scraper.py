@@ -28,7 +28,7 @@ browser = None
 if HEADLESS == True:
     opts = Options()
     opts.headless = True
-    browser = Firefox(options = opts)
+    browser = Firefox(options=opts)
 else:
     browser = Firefox()
 
@@ -67,11 +67,11 @@ for row in all_rows:
 #
 with Cursor() as cur:
     int_year = int(year)
-    processed = 0 # Intilialize processed as 0 (False)
+    processed = 0  # Initialize processed as 0 (False)
     for id in contract_ids:
         cur.execute('''INSERT OR IGNORE INTO Abstract
         ( AbstractID, Year, Processed ) VALUES ( ?, ?, ? )''',
-        ( id, int_year, processed ) )
+        (id, int_year, processed))
 
 browser.close()
 print('Process complete.')
