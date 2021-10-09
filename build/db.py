@@ -47,6 +47,12 @@ def get_table_names():
         cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
         return cur.fetchall()
 
+def get_table_columns(table: str):
+    '''Returns a list of column names for a given table'''
+    with Cursor() as cur:
+        cur.execute('SELECT * FROM ' + table)
+        cols = [description[0] for description in cur.description]
+        return cols
 
 def drop_table():
     # Fetch and print the list of tables
