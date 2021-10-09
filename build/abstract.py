@@ -4,62 +4,48 @@ from io import StringIO
 import pandas as pd
 from abc import ABC
 from db import Cursor, Connection
+from dataclasses import dataclass
 
-BASE_URL = 'http://transport.dot.state.mn.us/PostLetting/abstractCSV.aspx?ContractId='
+base_url = 'http://transport.dot.state.mn.us/PostLetting/abstractCSV.aspx?ContractId='
 
 
-class Abstract():
-    '''A Bid Abstract.
-    Requests csv data from MnDOT's Abstracts for Awarded Jobs web app. 
+class BidAbstract:
+    '''Represents a bid BidAbstract for a construction contract.
+    Requests csv data from MnDOT's BidAbstracts for Awarded Jobs web app. 
     Splits the csv data into contract, bid, and bidder sub-tables for analysis in pandas.
     '''
-    contract_id: int
-    url: str
-    response: requests.Response
-    # Response content split into subtable strings
-    contract_str: str
-    bid_str: str
-    bidder_str: str
-    # DataFrames generated from subtable strings
-    contract_df: pd.DataFrame
-    bid_df: pd.DataFrame
-    bidder_df: pd.DataFrame
 
     def __init__(self, contract_id: int) -> None:
         self.contract_id = contract_id
-        self.url = BASE_URL + str(contract_id)
+        self.request_data()
 
-        self.get_data()
-        self.get_df()
-
-    def get_data(self):
-        '''Requests data from web app and splits into subtables.'''
+    def request_data(self):
+        '''Requests data from web app and splits into subtables bytestrings.'''
         try:
-            self.response = requests.get(self.url)
+            self.response = requests.get(base_url + str(self.contract_id))
             # Raise a RequestException if there is an error with the response
             self.response.raise_for_status()
 
             # Split the resonse data by blank lines to divide into its three subtables
             blank_line_regex = r"(?:\r?\n){2,}"
-            self.contract_str, self.bid_str, self.bidder_str = re.split(
+            self.contract_bytestr, self.bid_bytestr, self.bidder_bytestr = re.split(
                 blank_line_regex, self.response.text)
         except requests.exceptions.RequestException as e:
             raise SystemExit(e)
 
-    def get_df(self):
-        self.contract_df = pd.read_csv(StringIO(self.contract_str))
-        self.bid_df = pd.read_csv(StringIO(self.bid_str))
-        self.bidder_df = pd.read_csv(StringIO(self.bidder_str))
+    def __str__(self) -> str:
+        return f'Contract ID: {self.contract_id}'
 
 
 class AbstractTable(ABC):
-    '''Base class for abstract sub tables.'''
-    ab: Abstract
+    '''Base class for BidAbstract sub tables.'''
+    ab: BidAbstract
+    raw_df: pd.DataFrame
     sql_df: pd.DataFrame
     temp_db_table: str
     insert_statement: str
 
-    def __init__(self, ab: Abstract) -> None:
+    def __init__(self, ab: BidAbstract) -> None:
         self.ab = ab
         self.get_sql_df()
 
@@ -77,7 +63,7 @@ class AbstractTable(ABC):
 class ContractTable(AbstractTable):
     '''Transforms the raw contract dataframe into a format the matches the destination SQL table schema.'''
 
-    def __init__(self, ab: Abstract) -> None:
+    def __init__(self, ab: BidAbstract) -> None:
         super().__init__(ab)
 
     def get_sql_df(self):
@@ -122,10 +108,10 @@ class ContractTable(AbstractTable):
                 'INSERT OR IGNORE INTO Contract SELECT * FROM TempContract')
 
 
-class BidTable(ContractTable):
+class BidTable(AbstractTable):
     '''Transforms the raw bid dataframe into a format the matches the destination SQL table schema.'''
 
-    def __init__(self, ab: Abstract) -> None:
+    def __init__(self, ab: BidAbstract) -> None:
         super().__init__(ab)
 
     @staticmethod
@@ -199,10 +185,10 @@ class BidTable(ContractTable):
 
 class BidderTable(AbstractTable):
     '''Transforms the raw bidder dataframe into a format the matches the destination SQL table schema.'''
-    ab: Abstract
+    ab: BidAbstract
     sql_df: pd.DataFrame
 
-    def __init__(self, ab: Abstract) -> None:
+    def __init__(self, ab: BidAbstract) -> None:
         super().__init__(ab)
 
     def get_sql_df(self):
@@ -226,7 +212,8 @@ class BidderTable(AbstractTable):
                 'INSERT OR IGNORE INTO Bidder SELECT * FROM TempBidder')
 
 # basic tests
-# ab = Abstract(200131)
+ab = BidAbstract(200131)
+print(ab)
 
 # contract = ContractTable(ab)
 # print(contract)
