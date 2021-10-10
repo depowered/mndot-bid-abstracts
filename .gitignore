@@ -16,3 +16,6 @@ __pycache__
 
 # Ignore geckodriver.log
 geckodriver.log
+
+# Ignore .txt files
+*.txt
