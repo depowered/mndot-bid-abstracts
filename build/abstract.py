@@ -7,14 +7,19 @@ base_url = 'http://transport.dot.state.mn.us/PostLetting/abstractCSV.aspx?Contra
 
 
 class Abstract:
-    '''Represents a bid BidAbstract for a construction contract.
-    Requests csv data from MnDOT's BidAbstracts for Awarded Jobs web app. 
-    Splits the csv data into contract, bid, and bidder sub-tables for analysis in pandas.
-    '''
+    '''Context manager for retrieving and streaming web hosted bid abstract data'''
 
     def __init__(self, contract_id: int) -> None:
         self.contract_id = contract_id
+
+
+    def __enter__(self):
         self.request_data()
+        return self
+
+
+    def __exit__(self, type, value, traceback):
+        self = None
 
 
     def request_data(self):
@@ -34,16 +39,15 @@ class Abstract:
 
 
     def stream_contract_data(self):
+        '''Streams contract data for loading into pandas.read_csv() function.'''
         return StringIO(self.contract_bytestr)
 
 
     def stream_bid_data(self):
+        '''Streams contract data for loading into pandas.read_csv() function.'''
         return StringIO(self.bid_bytestr)
 
 
     def stream_bidder_data(self):
+        '''Streams contract data for loading into pandas.read_csv() function.'''
         return StringIO(self.bidder_bytestr)
-
-
-    def __str__(self) -> str:
-        return f'Contract ID: {self.contract_id}'
