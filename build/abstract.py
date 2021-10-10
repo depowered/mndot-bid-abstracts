@@ -1,6 +1,7 @@
 import requests
 import re
 from io import StringIO
+import pandas as pd
 
 
 base_url = 'http://transport.dot.state.mn.us/PostLetting/abstractCSV.aspx?ContractId='
@@ -51,3 +52,39 @@ class Abstract:
     def stream_bidder_data(self):
         '''Streams contract data for loading into pandas.read_csv() function.'''
         return StringIO(self.bidder_bytestr)
+
+
+class AbstractData:
+    '''Serves input data to Table classes.'''
+
+    def __init__(self, contract_id: int) -> None:
+        self.contract_id = contract_id
+
+        # Retrieve data from the web and load into dataframes
+        with Abstract(self.contract_id) as ab:
+            self.contract_data = pd.read_csv(ab.stream_contract_data())
+            self.bid_data = pd.read_csv(ab.stream_bid_data())
+            self.bidder_data = pd.read_csv(ab.stream_bidder_data())
+
+
+    @property
+    def bidder_count(self):
+        return int((len(self.bid_data.columns) - 10) / 2)
+
+    @property
+    def bidder_id_0(self):
+        return self.bidder_data['Bidder Number'][0]
+
+    @property
+    def bidder_id_1(self):
+        if self.bidder_count > 1:
+            return self.bidder_data['Bidder Number'][1]
+        else:
+            return None
+
+    @property
+    def bidder_id_2(self):
+        if self.bidder_count > 2:
+            return self.bidder_data['Bidder Number'][2]
+        else:
+            return None

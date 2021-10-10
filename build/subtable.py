@@ -1,22 +1,17 @@
-from abstract import BidAbstract
+from abstract import AbstractData
 from db import get_table_columns
 import pandas as pd
-from io import StringIO
 
 
 class BidderTable:
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Bidder SQL table.'''
 
-    def __init__(self, bid_ab: BidAbstract) -> None:
+    def __init__(self, abstract_data: AbstractData) -> None:
         self.table: str = 'Bidder'
-        self.bid_ab = bid_ab
-        self.input_df = self.create_input_df()
+        self.abstract_data = abstract_data
+        self.input_df = self.abstract_data.bidder_data
         self.output_df = self.create_output_df()
-
-
-    def create_input_df(self):
-        return pd.read_csv(StringIO(self.bid_ab.bidder_bytestr))
 
 
     def create_output_df(self):
@@ -33,28 +28,20 @@ class BidderTable:
         raise NotImplemented
 
 
-    def get_bidder_count(self):
-        return self.output_df.shape[0]
-
-class ContractTable: # Relies on data from the bidder table in the previous implementation
+class ContractTable:
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Contract SQL table.'''
 
-    def __init__(self, abstract: BidAbstract, bidder_table: BidderTable) -> None:
+    def __init__(self, abstract_data: AbstractData) -> None:
         self.table: str = 'Contract'
-        self.abstract = abstract
-        self.bidder_table = bidder_table
-        self.input_df = self.create_input_df()
+        self.abstract_data = abstract_data
+        self.input_df = self.abstract_data.contract_data
         self.output_df = self.create_output_df()
-
-
-    def create_input_df(self):
-        return pd.read_csv(StringIO(self.abstract.contract_bytestr))
 
 
     def create_output_df(self):
         columns = get_table_columns(self.table)
-        output_df = pd.DataFrame(columns=columns)
+        output_df = pd.DataFrame(columns=columns, dtype='int')
 
         output_df['ContractID'] = self.input_df['Contract Id']
         output_df['Year'] = self.input_df['Letting Date'].apply(
@@ -63,12 +50,13 @@ class ContractTable: # Relies on data from the bidder table in the previous impl
         output_df['SPNumber'] = self.input_df['SP Number']
         output_df['District'] = self.input_df['District']
         output_df['County'] = self.input_df['County']
-        output_df['BidderID_0'] = self.bidder_table.output_df['BidderID'][0]
+        output_df['BidderID_0'] = self.abstract_data.bidder_id_0
         
-        if self.bidder_table.get_bidder_count() > 1:
-            output_df['BidderID_1'] = self.bidder_table.output_df['BidderID'][1]
-        if self.bidder_table.get_bidder_count() > 2:
-            output_df['BidderID_2'] = self.bidder_table.output_df['BidderID'][2]
+        # Check that other bidders exist before adding data
+        if self.abstract_data.bidder_id_1:
+            output_df['BidderID_1'] = self.abstract_data.bidder_id_1
+        if self.abstract_data.bidder_id_2:
+            output_df['BidderID_2'] = self.abstract_data.bidder_id_2
 
         return output_df
 
@@ -80,22 +68,21 @@ class BidTable:
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Contract SQL table.'''
 
-    def __init__(self, abstract: BidAbstract, contract_table: ContractTable) -> None:
+    def __init__(self, abstract_data: AbstractData) -> None:
         self.table: str = 'Bid'
-        self.abstract = abstract
-        self.contract_table = bidder_table
-        self.input_df = self.create_input_df()
+        self.abstract_data = abstract_data
+        self.input_df = self.abstract_data.bid_data
         self.output_df = self.create_output_df()
 
 
-    def create_input_df(self):
-        return pd.read_csv(StringIO(self.abstract.bid_bytestr))
+    # def create_input_df(self):
+    #     return pd.read_csv(StringIO(self.abstract.bid_bytestr))
 
 
     def get_unique_id(self, item_number: str):
         '''Generate a unique bid id by concatenating ContractID and ItemNumber, 
         removing the '/' and casting to int'''
-        unique_id = str(self.abstract.contract_id) + item_number.replace('/', '')
+        unique_id = str(self.abstract_data.contract_id) + item_number.replace('/', '')
         return int(unique_id)
 
 
@@ -118,7 +105,7 @@ class BidTable:
         output_df['BidID'] = self.input_df['ItemNumber'].apply(
             self.get_unique_id
         )
-        output_df['ContractID'] = self.abstract.contract_id
+        output_df['ContractID'] = self.abstract_data.contract_id
         output_df['ItemID'] = self.input_df['ItemNumber'].apply(
             self.get_item_number_as_int
         )
@@ -130,15 +117,14 @@ class BidTable:
         output_df['BidderID_0_TotalPrice'] = self.input_df.iloc[:, 11].apply(
             self.price_to_float)
         
-        # Check for second lowest bidder before adding data
-        if self.input_df.shape[1] > 12:
+        # Check that other bidders exist before adding data
+        if self.abstract_data.bidder_id_1:
             output_df['BidderID_1_UnitPrice'] = self.input_df.iloc[:, 12].apply(
                 self.price_to_float)
             output_df['BidderID_1_TotalPrice'] = self.input_df.iloc[:, 13].apply(
                 self.price_to_float)
 
-        # Check for third lowest bidder before adding data
-        if self.input_df.shape[1] > 14:
+        if self.abstract_data.bidder_id_2:
             output_df['BidderID_2_UnitPrice'] = self.input_df.iloc[:, 14].apply(
                 self.price_to_float)
             output_df['BidderID_2_TotalPrice'] = self.input_df.iloc[:, 15].apply(
@@ -152,13 +138,13 @@ class BidTable:
 
 
 # Basic tests
-bid_ab = BidAbstract(200131)
+data = AbstractData(200131)
 
-bidder_table = BidderTable(bid_ab)
+bidder_table = BidderTable(abstract_data=data)
 print(bidder_table.output_df.head())
 
-contract_table = ContractTable(abstract=bid_ab, bidder_table=bidder_table)
+contract_table = ContractTable(abstract_data=data)
 print(contract_table.output_df.head())
 
-bid_table = BidTable(abstract=bid_ab, contract_table=contract_table)
+bid_table = BidTable(abstract_data=data)
 print(bid_table.output_df.head())
