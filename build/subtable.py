@@ -33,9 +33,10 @@ class ContractTable: # Relies on data from the bidder table in the previous impl
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Contract SQL table.'''
 
-    def __init__(self, abstract: BidAbstract) -> None:
+    def __init__(self, abstract: BidAbstract, bidder_table: BidderTable) -> None:
         self.table: str = 'Contract'
         self.abstract = abstract
+        self.bidder_table = bidder_table
         self.input_df = self.create_input_df()
         self.output_df = self.create_output_df()
 
@@ -53,18 +54,24 @@ class ContractTable: # Relies on data from the bidder table in the previous impl
         output_df['SPNumber'] = self.input_df['SP Number']
         output_df['District'] = self.input_df['District']
         output_df['County'] = self.input_df['County']
-        # TODO: fill BidderID columns
+        output_df['BidderID_0'] = self.bidder_table.output_df['BidderID'][0]
+        
+        if self.bidder_table.get_bidder_count() > 1:
+            output_df['BidderID_1'] = self.bidder_table.output_df['BidderID'][1]
+        if self.bidder_table.get_bidder_count() > 2:
+            output_df['BidderID_2'] = self.bidder_table.output_df['BidderID'][2]
+
         return output_df
+
 
     # TODO: implement to_db function
 
 
 
 bid_ab = BidAbstract(200131)
-contract_table = ContractTable(bid_ab=bid_ab)
-print(contract_table.input_df.shape)
-print(contract_table.output_df.head())
 
 bidder_table = BidderTable(bid_ab)
 print(bidder_table.output_df.head())
-print(bidder_table.get_bidder_count())
+
+contract_table = ContractTable(abstract=bid_ab, bidder_table=bidder_table)
+print(contract_table.output_df.head())
