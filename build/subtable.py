@@ -33,14 +33,14 @@ class ContractTable: # Relies on data from the bidder table in the previous impl
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Contract SQL table.'''
 
-    def __init__(self, bid_ab: BidAbstract) -> None:
+    def __init__(self, abstract: BidAbstract) -> None:
         self.table: str = 'Contract'
-        self.bid_ab = bid_ab
+        self.abstract = abstract
         self.input_df = self.create_input_df()
         self.output_df = self.create_output_df()
 
     def create_input_df(self):
-        return pd.read_csv(StringIO(self.bid_ab.contract_bytestr))
+        return pd.read_csv(StringIO(self.abstract.contract_bytestr))
 
     def create_output_df(self):
         columns = get_table_columns(self.table)
