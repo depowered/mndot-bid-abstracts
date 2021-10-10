@@ -1,5 +1,6 @@
 from db import Cursor
-from abstract import Abstract, ContractTable, BidTable, BidderTable
+from abstract import AbstractData
+from table import ContractTable, BidTable, BidderTable
 
 '''Iterates through a list of contract IDs. Retrieves and processes the
 data for each contract ID. Inserts the result to the database.'''
@@ -17,7 +18,7 @@ def get_abstract_list():
     '''Retrieves list of unprocessed abstracts'''
     with Cursor() as cur:
         cur.execute(
-            'SELECT * FROM Abstract WHERE processed = 0 ORDER BY AbstractID DESC')
+            'SELECT * FROM Abstract WHERE Processed = 0 ORDER BY AbstractID DESC')
         return cur.fetchall()
 
 
@@ -25,24 +26,24 @@ def set_processed(abstract_id: int):
     '''Sets the processed value of the given Contract ID to 1 (True).'''
     with Cursor() as cur:
         cur.execute(
-            'UPDATE Abstract SET processed = 1 WHERE AbstractID = ' + str(abstract_id))
+            'UPDATE Abstract SET Processed = 1 WHERE AbstractID = ' + str(abstract_id))
 
 
 def process_abstract(abstract_id: int):
     '''Processes abstract and inserts data into the associated SQL tables.'''
-    ab = Abstract(abstract_id)
-    contract_table = ContractTable(ab)
+    data = AbstractData(abstract_id)
+    contract_table = ContractTable(data)
     contract_table.to_db()
-    bid_table = BidTable(ab)
+    bid_table = BidTable(data)
     bid_table.to_db()
-    bidder_table = BidderTable(ab)
+    bidder_table = BidderTable(data)
     bidder_table.to_db()
 
 
 def error_processing_abstract(abstract_id: int):
     with Cursor() as cur:
         cur.execute(
-            'UPDATE Abstract SET processed = -1 WHERE AbstractID = ' + str(abstract_id))
+            'UPDATE Abstract SET Processed = -1 WHERE AbstractID = ' + str(abstract_id))
 
 
 def main():
