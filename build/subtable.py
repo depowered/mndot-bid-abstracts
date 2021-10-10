@@ -1,5 +1,5 @@
 from abstract import AbstractData
-from db import get_table_columns
+from db import get_table_columns, Connection, Cursor
 import pandas as pd
 
 
@@ -25,7 +25,18 @@ class BidderTable:
 
 
     def to_db(self):
-        raise NotImplemented
+        '''Inserts the sql formatted dataframe into the database.'''
+
+        with Connection() as conn:
+            self.output_df.to_sql(
+                name='TempBidder', 
+                con=conn, 
+                if_exists='replace', 
+                index=False
+            )
+        with Cursor() as cur:
+            cur.execute(
+                'INSERT OR IGNORE INTO Bidder SELECT * FROM TempBidder')
 
 
 class ContractTable:
@@ -62,7 +73,19 @@ class ContractTable:
 
 
     def to_db(self):
-        raise NotImplemented
+        '''Inserts the output_df into the database.'''
+
+        with Connection() as conn:
+            self.output_df.to_sql(
+                name='TempContract', 
+                con=conn, 
+                if_exists='replace', 
+                index=False
+            )
+        with Cursor() as cur:
+            cur.execute(
+                'INSERT OR IGNORE INTO Contract SELECT * FROM TempContract')
+
 
 class BidTable:
     '''Transforms raw contract subtable data into a format that can be inserted 
@@ -73,10 +96,6 @@ class BidTable:
         self.abstract_data = abstract_data
         self.input_df = self.abstract_data.bid_data
         self.output_df = self.create_output_df()
-
-
-    # def create_input_df(self):
-    #     return pd.read_csv(StringIO(self.abstract.bid_bytestr))
 
 
     def get_unique_id(self, item_number: str):
@@ -134,17 +153,33 @@ class BidTable:
 
 
     def to_db(self):
-        raise NotImplemented
+        '''Inserts the output_df into the database.'''
+
+        with Connection() as conn:
+            self.output_df.to_sql(
+                name='TempBid', 
+                con=conn, 
+                if_exists='replace', 
+                index=False
+            )
+        with Cursor() as cur:
+            cur.execute('INSERT OR IGNORE INTO Bid SELECT * FROM TempBid')
 
 
 # Basic tests
-data = AbstractData(200131)
+# data = AbstractData(200131)
 
-bidder_table = BidderTable(abstract_data=data)
-print(bidder_table.output_df.head())
+# bidder_table = BidderTable(abstract_data=data)
+# print(bidder_table.output_df.head())
 
-contract_table = ContractTable(abstract_data=data)
-print(contract_table.output_df.head())
+# contract_table = ContractTable(abstract_data=data)
+# print(contract_table.output_df.head())
 
-bid_table = BidTable(abstract_data=data)
-print(bid_table.output_df.head())
+# bid_table = BidTable(abstract_data=data)
+# print(bid_table.output_df.head())
+
+# Insert to database
+# bidder_table.to_db()
+# contract_table.to_db()
+# bid_table.to_db()
+# print("Process complete.")
