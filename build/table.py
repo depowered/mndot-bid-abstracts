@@ -3,6 +3,19 @@ from db import get_table_columns, Connection, Cursor
 import pandas as pd
 
 
+#
+# Format helper functions
+#
+def get_item_number_as_int(item_number: str):
+    '''Convert ItemNumber string to int'''
+    return int(item_number.replace('/', ''))
+
+
+def price_to_float(price):
+    '''Convert unit price string to float'''
+    return float(price.strip().replace('$', '').replace(',', ''))
+
+
 class BidderTable:
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Bidder SQL table.'''
@@ -99,22 +112,10 @@ class BidTable:
 
 
     def get_unique_id(self, item_number: str):
-        '''Generate a unique bid id by concatenating ContractID and ItemNumber, 
+        '''Generate a unique id for each item bid by concatenating ContractID and ItemNumber, 
         removing the '/' and casting to int'''
         unique_id = str(self.abstract_data.contract_id) + item_number.replace('/', '')
         return int(unique_id)
-
-
-    @staticmethod
-    def get_item_number_as_int(item_number: str):
-        '''Convert ItemNumber string to int'''
-        return int(item_number.replace('/', ''))
-
-
-    @staticmethod
-    def price_to_float(price):
-        '''Convert unit price string to float'''
-        return float(price.strip().replace('$', '').replace(',', ''))
 
 
     def create_output_df(self):
@@ -126,28 +127,34 @@ class BidTable:
         )
         output_df['ContractID'] = self.abstract_data.contract_id
         output_df['ItemID'] = self.input_df['ItemNumber'].apply(
-            self.get_item_number_as_int
+            get_item_number_as_int
         )
         output_df['Quantity'] = self.input_df['Quantity']
         output_df['Engineer_UnitPrice'] = self.input_df['Engineers (Unit Price)']
         output_df['Engineer_TotalPrice'] = self.input_df['Engineers (Extended Amount)']
         output_df['BidderID_0_UnitPrice'] = self.input_df.iloc[:, 10].apply(
-            self.price_to_float)
+            price_to_float
+        )
         output_df['BidderID_0_TotalPrice'] = self.input_df.iloc[:, 11].apply(
-            self.price_to_float)
+            price_to_float
+        )
         
         # Check that other bidders exist before adding data
         if self.abstract_data.bidder_id_1:
             output_df['BidderID_1_UnitPrice'] = self.input_df.iloc[:, 12].apply(
-                self.price_to_float)
+                price_to_float
+            )
             output_df['BidderID_1_TotalPrice'] = self.input_df.iloc[:, 13].apply(
-                self.price_to_float)
+                price_to_float
+            )
 
         if self.abstract_data.bidder_id_2:
             output_df['BidderID_2_UnitPrice'] = self.input_df.iloc[:, 14].apply(
-                self.price_to_float)
+                price_to_float
+            )
             output_df['BidderID_2_TotalPrice'] = self.input_df.iloc[:, 15].apply(
-                self.price_to_float)
+                price_to_float
+            )
 
         return output_df
 
