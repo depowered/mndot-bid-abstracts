@@ -1,6 +1,7 @@
 from abstract import AbstractData
 from db import get_table_columns, Connection, Cursor
 import pandas as pd
+from abc import ABC, abstractmethod
 
 
 #
@@ -16,7 +17,41 @@ def price_to_float(price):
     return float(price.strip().replace('$', '').replace(',', ''))
 
 
-class BidderTable:
+#
+# Table classes for each subtable from an abstract with interfaces defined 
+# by an abstract base class
+#
+
+class Table(ABC):
+
+    @abstractmethod
+    def __init__(self, abstract_data: AbstractData) -> None:
+        pass
+
+
+    @abstractmethod
+    def create_output_df(self) -> pd.DataFrame:
+        '''Creates a dataframe that is formatted to match the destination SQL table.'''
+        pass
+
+
+    def to_db(self):
+        '''Inserts the sql formatted dataframe into the database.'''
+
+        temp_table = 'Temp' + self.table
+        with Connection() as conn:
+            self.output_df.to_sql(
+                name=temp_table, 
+                con=conn, 
+                if_exists='replace', 
+                index=False
+            )
+        with Cursor() as cur:
+            cur.execute(
+                'INSERT OR IGNORE INTO Bidder SELECT * FROM TempBidder')
+
+
+class BidderTable(Table):
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Bidder SQL table.'''
 
@@ -37,22 +72,7 @@ class BidderTable:
         return output_df
 
 
-    def to_db(self):
-        '''Inserts the sql formatted dataframe into the database.'''
-
-        with Connection() as conn:
-            self.output_df.to_sql(
-                name='TempBidder', 
-                con=conn, 
-                if_exists='replace', 
-                index=False
-            )
-        with Cursor() as cur:
-            cur.execute(
-                'INSERT OR IGNORE INTO Bidder SELECT * FROM TempBidder')
-
-
-class ContractTable:
+class ContractTable(Table):
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Contract SQL table.'''
 
@@ -85,22 +105,7 @@ class ContractTable:
         return output_df
 
 
-    def to_db(self):
-        '''Inserts the output_df into the database.'''
-
-        with Connection() as conn:
-            self.output_df.to_sql(
-                name='TempContract', 
-                con=conn, 
-                if_exists='replace', 
-                index=False
-            )
-        with Cursor() as cur:
-            cur.execute(
-                'INSERT OR IGNORE INTO Contract SELECT * FROM TempContract')
-
-
-class BidTable:
+class BidTable(Table):
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Contract SQL table.'''
 
@@ -157,20 +162,6 @@ class BidTable:
             )
 
         return output_df
-
-
-    def to_db(self):
-        '''Inserts the output_df into the database.'''
-
-        with Connection() as conn:
-            self.output_df.to_sql(
-                name='TempBid', 
-                con=conn, 
-                if_exists='replace', 
-                index=False
-            )
-        with Cursor() as cur:
-            cur.execute('INSERT OR IGNORE INTO Bid SELECT * FROM TempBid')
 
 
 # Basic tests

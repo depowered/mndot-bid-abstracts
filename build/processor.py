@@ -1,6 +1,6 @@
-from db import Cursor
-from abstract import AbstractData
-from table import ContractTable, BidTable, BidderTable
+from build.db import Cursor
+from build.abstract import AbstractData
+from build.table import ContractTable, BidTable, BidderTable
 
 '''Iterates through a list of contract IDs. Retrieves and processes the
 data for each contract ID. Inserts the result to the database.'''
@@ -41,6 +41,7 @@ def process_abstract(abstract_id: int):
 
 
 def error_processing_abstract(abstract_id: int):
+    '''Sets the proccessed value for the given abstract id to -1 to indicate that an error occurred during processing.'''
     with Cursor() as cur:
         cur.execute(
             'UPDATE Abstract SET Processed = -1 WHERE AbstractID = ' + str(abstract_id))
@@ -55,20 +56,17 @@ def main():
     for row in abstract_lst:
         abstract_id = row[0]
 
-        print(f'Begin processing: {abstract_id}')
+        print(f'#{count} Begin processing: {abstract_id}')
 
         try:
             process_abstract(abstract_id)
             set_processed(abstract_id)
 
-            print(f'Finished processing: {abstract_id}')
+            print(f'{count} Finished processing: {abstract_id}')
             count = count + 1
-            if count > 99:
-                print('Retrieved 100 abstracts. Restart to retrieve more.')
-                break
 
         except BaseException as error:
-            to_log(error, abstract_id)
+            print(f'#{count} Error processing: {abstract_id}')
             error_processing_abstract(abstract_id)
             continue
 

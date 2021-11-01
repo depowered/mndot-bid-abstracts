@@ -5,7 +5,7 @@ import csv
 Interface for managing the database.
 '''
 
-DATABASE = 'data/abstractdb.sqlite'
+DATABASE = 'data/2018db.sqlite'
 
 
 class Connection():
