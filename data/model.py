@@ -6,6 +6,9 @@ from sqlalchemy.ext.declarative import declarative_base
 CONNECTION_STRING = "sqlite+pysqlite:///data/db.sqlite"
 
 
+engine = create_engine(CONNECTION_STRING)
+
+
 Base = declarative_base()
 
 class Item(Base):
@@ -67,8 +70,7 @@ class Bidder(Base):
 
 def main():
     # Creates blank database file
-    eng = create_engine(CONNECTION_STRING)
-    Base.metadata.create_all(eng)
+    Base.metadata.create_all(engine)
 
 if __name__ == '__main__':
     main()
