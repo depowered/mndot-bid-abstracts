@@ -1,4 +1,5 @@
 from abstract import AbstractData
+from data.model import engine
 from db import get_table_columns, Connection, Cursor
 import pandas as pd
 from abc import ABC, abstractmethod
@@ -15,6 +16,13 @@ def get_item_number_as_int(item_number: str):
 def price_to_float(price):
     '''Convert unit price string to float'''
     return float(price.strip().replace('$', '').replace(',', ''))
+
+
+def get_unique_bid_id( item_number: str, contract_id: int):
+    '''Generate a unique id for each item bid by concatenating ContractID and ItemNumber, 
+    removing the '/' and casting to int'''
+    unique_id = str(contract_id) + item_number.replace('/', '')
+    return int(unique_id)
 
 
 #
@@ -116,19 +124,12 @@ class BidTable(Table):
         self.output_df = self.create_output_df()
 
 
-    def get_unique_id(self, item_number: str):
-        '''Generate a unique id for each item bid by concatenating ContractID and ItemNumber, 
-        removing the '/' and casting to int'''
-        unique_id = str(self.abstract_data.contract_id) + item_number.replace('/', '')
-        return int(unique_id)
-
-
     def create_output_df(self):
         columns = get_table_columns(self.table)
         output_df = pd.DataFrame(columns=columns)
 
         output_df['BidID'] = self.input_df['ItemNumber'].apply(
-            self.get_unique_id
+            get_unique_bid_id, args=(self.abstract_data.contract_id, )
         )
         output_df['ContractID'] = self.abstract_data.contract_id
         output_df['ItemID'] = self.input_df['ItemNumber'].apply(
