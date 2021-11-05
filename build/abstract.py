@@ -8,10 +8,11 @@ base_url = 'http://transport.dot.state.mn.us/PostLetting/abstractCSV.aspx?Contra
 
 
 class Abstract:
-    '''Context manager for retrieving and streaming web hosted bid abstract data'''
+    '''Context manager for retrieving and streaming web hosted bid abstract data into the AbstractData class.'''
 
     def __init__(self, contract_id: int) -> None:
         self.contract_id = contract_id
+        self.url = base_url + str(contract_id)
 
 
     def __enter__(self):
@@ -26,7 +27,7 @@ class Abstract:
     def request_data(self):
         '''Requests data from web app and splits into subtables bytestrings.'''
         try:
-            self.response = requests.get(base_url + str(self.contract_id))
+            self.response = requests.get(self.url)
             # Raise a RequestException if there is an error with the response
             self.response.raise_for_status()
 
