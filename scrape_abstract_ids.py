@@ -1,6 +1,10 @@
 from sqlalchemy import select
 from build.scraper import AbstractIDScraper
 from data.model import Abstract, Session
+from datetime import datetime
+
+
+current_year = datetime.now().year
 
 
 def get_abstract_ids_from_db(session: Session):
@@ -31,15 +35,16 @@ def get_new_abstract_objs(scraper: AbstractIDScraper, db_abstract_ids: list):
     return abstract_objs
 
 
-def main():
+def scrape_abstract_ids(year: int = current_year):
+    '''Scrape abstract IDs for given year and insert into database.'''
     with Session() as session:
         # get a list of all Abstract IDs already in the database
         db_abstract_ids = get_abstract_ids_from_db(session)
 
-        scraper = AbstractIDScraper(year=2021)
+        scraper = AbstractIDScraper(year=year)
 
         # compare scraped ids to list from the database
-        new_abstract_objs = get_new_abstract_objs(session, scraper, db_abstract_ids)
+        new_abstract_objs = get_new_abstract_objs(scraper, db_abstract_ids)
 
         # Insert any new abstracts into the database
         for obj in new_abstract_objs:
@@ -49,6 +54,11 @@ def main():
 
     print("Scraping complete.")
     print(f'Inserted {len(new_abstract_objs)} new Abstract IDs into the database.')
+
+
+def main():
+    # scrape new ids for current year
+    scrape_abstract_ids()
 
 
 if __name__ == '__main__':
