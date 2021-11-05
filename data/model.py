@@ -1,12 +1,15 @@
 from sqlalchemy import Column, Integer, String, Date, Float, ForeignKey
 from sqlalchemy.engine.create import create_engine
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 
 CONNECTION_STRING = "sqlite+pysqlite:///data/db.sqlite"
 
 
 engine = create_engine(CONNECTION_STRING)
+
+Session = sessionmaker(engine)
 
 
 Base = declarative_base()
@@ -29,6 +32,8 @@ class Abstract(Base):
     Year = Column(Integer)
     Processed = Column(String)
 
+    def __str__(self) -> str:
+        return f'AbstractID = {self.AbstractID}, Year = {self.Year}, Processed = {self.Processed}'
 
 class Contract(Base):
     __tablename__ = "Contract"
