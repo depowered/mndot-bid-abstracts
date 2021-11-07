@@ -26,9 +26,7 @@ class AbstractIDScraper:
 
 
     def get_abstract_id_list(self):
-        #
-        # Navigate to all results for the target year and extract Contract IDs
-        #
+        '''Scrapes list of abstract IDs from webpage.'''
         # Select letting year
         element = self.browser.find_element_by_id('MainContent_drpLettingYear')
         select = Select(element)
