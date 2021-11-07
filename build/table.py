@@ -1,8 +1,8 @@
-from abstract import AbstractData
-from data.model import engine
-from db import get_table_columns, Connection, Cursor
+from build.abstract import AbstractData
 import pandas as pd
 from abc import ABC, abstractmethod
+from data.model import Bid, Bidder, Contract, Item
+from typing import Union
 
 
 #
@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 #
 def get_item_number_as_int(item_number: str):
     '''Convert ItemNumber string to int'''
-    return int(item_number.replace('/', ''))
+    return int(item_number.replace('/', '').replace('.', ''))
 
 
 def price_to_float(price):
@@ -30,10 +30,10 @@ def get_unique_bid_id( item_number: str, contract_id: int):
 # by an abstract base class
 #
 
-class Table(ABC):
+class DataTable(ABC):
 
     @abstractmethod
-    def __init__(self, abstract_data: AbstractData) -> None:
+    def __init__(self, input_data: Union[AbstractData, str]) -> None:
         pass
 
 
@@ -43,35 +43,25 @@ class Table(ABC):
         pass
 
 
-    def to_db(self):
-        '''Inserts the sql formatted dataframe into the database.'''
-
-        temp_table = 'Temp' + self.table
-        with Connection() as conn:
-            self.output_df.to_sql(
-                name=temp_table, 
-                con=conn, 
-                if_exists='replace', 
-                index=False
-            )
-        with Cursor() as cur:
-            cur.execute(
-                'INSERT OR IGNORE INTO Bidder SELECT * FROM TempBidder')
+    def create_records(self):
+        '''Creates a list of database model objects (records) from each row of the output_df.'''
+        pass
 
 
-class BidderTable(Table):
+class BidderTable(DataTable):
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Bidder SQL table.'''
 
-    def __init__(self, abstract_data: AbstractData) -> None:
+    def __init__(self, input_data: AbstractData) -> None:
         self.table: str = 'Bidder'
-        self.abstract_data = abstract_data
-        self.input_df = self.abstract_data.bidder_data
+        self.input_data = input_data
+        self.input_df = self.input_data.bidder_data
         self.output_df = self.create_output_df()
+        self.records = self.create_records()
 
 
     def create_output_df(self):
-        columns = get_table_columns(self.table)
+        columns = Bidder().__table__.columns.keys()
         output_df = pd.DataFrame(columns=columns)
 
         output_df['BidderID'] = self.input_df['Bidder Number']
@@ -79,20 +69,32 @@ class BidderTable(Table):
 
         return output_df
 
+    def create_records(self) -> list[Bidder]:
+        db_records = []
+        for row in self.output_df.itertuples(index=False, name='BidderTable'):
+            record = Bidder(
+                BidderID = row.BidderID,
+                Name = row.Name
+            )
+            db_records.append(record)
 
-class ContractTable(Table):
+        return db_records
+
+
+class ContractTable(DataTable):
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Contract SQL table.'''
 
-    def __init__(self, abstract_data: AbstractData) -> None:
+    def __init__(self, input_data: AbstractData) -> None:
         self.table: str = 'Contract'
-        self.abstract_data = abstract_data
-        self.input_df = self.abstract_data.contract_data
+        self.input_data = input_data
+        self.input_df = self.input_data.contract_data
         self.output_df = self.create_output_df()
+        self.records = self.create_records()
 
 
     def create_output_df(self):
-        columns = get_table_columns(self.table)
+        columns = Contract().__table__.columns.keys()
         output_df = pd.DataFrame(columns=columns, dtype='int')
 
         output_df['ContractID'] = self.input_df['Contract Id']
@@ -102,36 +104,56 @@ class ContractTable(Table):
         output_df['SPNumber'] = self.input_df['SP Number']
         output_df['District'] = self.input_df['District']
         output_df['County'] = self.input_df['County']
-        output_df['BidderID_0'] = self.abstract_data.bidder_id_0
+        output_df['BidderID_0'] = self.input_data.bidder_id_0
         
         # Check that other bidders exist before adding data
-        if self.abstract_data.bidder_id_1:
-            output_df['BidderID_1'] = self.abstract_data.bidder_id_1
-        if self.abstract_data.bidder_id_2:
-            output_df['BidderID_2'] = self.abstract_data.bidder_id_2
+        if self.input_data.bidder_id_1:
+            output_df['BidderID_1'] = self.input_data.bidder_id_1
+        if self.input_data.bidder_id_2:
+            output_df['BidderID_2'] = self.input_data.bidder_id_2
 
         return output_df
 
 
-class BidTable(Table):
+    def create_records(self) -> list[Contract]:
+        db_records = []
+        for row in self.output_df.itertuples(index=False, name='ContractTable'):
+            record = Contract(
+                ContractID = row.ContractID,
+                Year = row.Year,
+                LetDate = row.LetDate,
+                SPNumber = row.SPNumber,
+                District = row.District,
+                County = row.County,
+                BidderID_0 = row.BidderID_0,
+                BidderID_1 = row.BidderID_1,
+                BidderID_2 = row.BidderID_2
+            )
+            db_records.append(record)
+
+        return db_records
+
+
+class BidTable(DataTable):
     '''Transforms raw contract subtable data into a format that can be inserted 
     into the Contract SQL table.'''
 
-    def __init__(self, abstract_data: AbstractData) -> None:
+    def __init__(self, input_data: AbstractData) -> None:
         self.table: str = 'Bid'
-        self.abstract_data = abstract_data
-        self.input_df = self.abstract_data.bid_data
+        self.input_data = input_data
+        self.input_df = self.input_data.bid_data
         self.output_df = self.create_output_df()
+        self.records = self.create_records()
 
 
     def create_output_df(self):
-        columns = get_table_columns(self.table)
+        columns = Bid().__table__.columns.keys()
         output_df = pd.DataFrame(columns=columns)
 
         output_df['BidID'] = self.input_df['ItemNumber'].apply(
-            get_unique_bid_id, args=(self.abstract_data.contract_id, )
+            get_unique_bid_id, args=(self.input_data.contract_id, )
         )
-        output_df['ContractID'] = self.abstract_data.contract_id
+        output_df['ContractID'] = self.input_data.contract_id
         output_df['ItemID'] = self.input_df['ItemNumber'].apply(
             get_item_number_as_int
         )
@@ -146,7 +168,7 @@ class BidTable(Table):
         )
         
         # Check that other bidders exist before adding data
-        if self.abstract_data.bidder_id_1:
+        if self.input_data.bidder_id_1:
             output_df['BidderID_1_UnitPrice'] = self.input_df.iloc[:, 12].apply(
                 price_to_float
             )
@@ -154,7 +176,7 @@ class BidTable(Table):
                 price_to_float
             )
 
-        if self.abstract_data.bidder_id_2:
+        if self.input_data.bidder_id_2:
             output_df['BidderID_2_UnitPrice'] = self.input_df.iloc[:, 14].apply(
                 price_to_float
             )
@@ -165,20 +187,70 @@ class BidTable(Table):
         return output_df
 
 
-# Basic tests
-# data = AbstractData(200131)
+    def create_records(self) -> list[Bid]:
+        db_records = []
+        for row in self.output_df.itertuples(index=False, name='BidTable'):
+            record = Bid(
+                BidID = row.BidID,
+                ContractID = row.ContractID,
+                ItemID = row.ItemID,
+                Quantity = row.Quantity,
+                Engineer_UnitPrice = row.Engineer_UnitPrice,
+                Engineer_TotalPrice = row.Engineer_TotalPrice,
+                BidderID_0_UnitPrice = row.BidderID_0_UnitPrice,
+                BidderID_0_TotalPrice = row.BidderID_0_TotalPrice,
+                BidderID_1_UnitPrice = row.BidderID_1_UnitPrice,
+                BidderID_1_TotalPrice = row.BidderID_1_TotalPrice,
+                BidderID_2_UnitPrice = row.BidderID_2_UnitPrice,
+                BidderID_2_TotalPrice = row.BidderID_2_TotalPrice
+            )
+            db_records.append(record)
 
-# bidder_table = BidderTable(abstract_data=data)
-# print(bidder_table.output_df.head())
+        return db_records
 
-# contract_table = ContractTable(abstract_data=data)
-# print(contract_table.output_df.head())
 
-# bid_table = BidTable(abstract_data=data)
-# print(bid_table.output_df.head())
+class ItemTable(DataTable):
+    def __init__(self, input_data: str) -> None:
+        self.table: str = 'Item'
+        self.input_data = input_data
+        self.input_df = pd.read_csv(self.input_data)
+        self.output_df = self.create_output_df()
+        self.records = self.create_records()
 
-# Insert to database
-# bidder_table.to_db()
-# contract_table.to_db()
-# bid_table.to_db()
-# print("Process complete.")
+
+    def create_output_df(self) -> pd.DataFrame:
+        columns = Item().__table__.columns.keys()
+        output_df = pd.DataFrame(columns=columns)
+
+        output_df['ItemID'] = self.input_df['Item Number'].apply(
+            get_item_number_as_int
+        )
+        output_df['SpecCode'] = self.input_df['Item Number'].apply(
+            lambda x: x[:4]
+        )
+        output_df['UnitCode'] = self.input_df['Item Number'].apply(
+            lambda x: x[5:8]
+        )
+        output_df['ItemCode'] = self.input_df['Item Number'].apply(
+            lambda x: x[9:]
+        )
+        output_df['Description'] = self.input_df['Long Description']
+        output_df['Unit'] = self.input_df['Unit Name']
+
+        return output_df
+
+
+    def create_records(self) -> list[Item]:
+        db_records = []
+        for row in self.output_df.itertuples(index=False, name='ItemTable'):
+            record = Item(
+                ItemID = row.ItemID,
+                SpecCode = row.SpecCode,
+                UnitCode = row.UnitCode,
+                ItemCode = row.ItemCode,
+                Description = row.Description,
+                Unit = row.Unit
+            )
+            db_records.append(record)
+
+        return db_records
