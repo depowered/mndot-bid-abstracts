@@ -93,4 +93,4 @@ with engine.connect() as conn:
 df = create_weighted_avg_df(item_df=item_df, bid_df=bid_df)
 
 # export weighted average dataframe to csv
-df.to_csv('Spec2018_weighted_average_all.csv')
+df.to_csv('exports/Spec2018_weighted_average_all.csv')
