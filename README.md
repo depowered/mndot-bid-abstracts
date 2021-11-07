@@ -24,6 +24,5 @@ To process a bid abstract, the program makes a request for csv data from MnDOT's
 Finally, pandas is used to aggregate data queried from the database and cacluate weighted averages for each bid item. The resulting weighted averages can be exported to a csv for use as input into other tooling. The results are location filterable by MnDOT administrative district or county.
 
 ## Future Development
-- Refactor the database management functionality from raw SQL statements to an Object Relational Mapper (like sqlalchemy). The goal of this change is to facilitate easier migration from SQLite to PostgreSQL to support distributed access to the processed data.
 - Develop an interactive web application with functionality to explore, filter, and export aggregated insights.
 - Explore container and/or packaging technologies to manage dependencies and improve deployability.
