@@ -14,15 +14,16 @@ Session = sessionmaker(engine)
 
 Base = declarative_base()
 
-class Item(Base):
-    __tablename__ = "Item"
 
-    ItemID = Column(Integer, primary_key=True, unique=True)
-    SpecCode = Column(String)
-    UnitCode = Column(String)
-    ItemCode = Column(String)
-    Description = Column(String)
-    Unit = Column(String)
+class Item2018(Base):
+    __tablename__ = "Item2018"
+
+    ItemID_2018 = Column(Integer, primary_key=True, unique=True)
+    SpecCode_2018 = Column(String)
+    UnitCode_2018 = Column(String)
+    ItemCode_2018 = Column(String)
+    Description_2018 = Column(String)
+    Unit_2018 = Column(String)
 
 
     def __str__(self) -> str:
@@ -30,12 +31,38 @@ class Item(Base):
 
 
     def __repr__(self) -> str:
-        a = f'ItemID = {self.ItemID}'
-        b = f'SpecCode = {self.SpecCode}'
-        c = f'UnitCode = {self.UnitCode}'
-        d = f'ItemCode = {self.ItemCode}'
-        e = f'Description = {self.Description}'
-        f = f'Unit = {self.Unit}'
+        a = f'ItemID = {self.ItemID_2018}'
+        b = f'SpecCode = {self.SpecCode_2018}'
+        c = f'UnitCode = {self.UnitCode_2018}'
+        d = f'ItemCode = {self.ItemCode_2018}'
+        e = f'Description = {self.Description_2018}'
+        f = f'Unit = {self.Unit_2018}'
+        return ', '.join( [a, b, c, d, e, f] )
+
+
+class Item2020(Base):
+    __tablename__ = "Item2020"
+
+    ItemID_2020 = Column(Integer, primary_key=True, unique=True)
+    SpecCode_2020 = Column(String)
+    UnitCode_2020 = Column(String)
+    ItemCode_2020 = Column(String)
+    Description_2020 = Column(String)
+    Unit_2020 = Column(String)
+    Item2018_ID = Column(Integer)
+
+
+    def __str__(self) -> str:
+        return f'Item(Description={self.Description}, Unit={self.Unit})'
+
+
+    def __repr__(self) -> str:
+        a = f'ItemID = {self.ItemID_2020}'
+        b = f'SpecCode = {self.SpecCode_2020}'
+        c = f'UnitCode = {self.UnitCode_2020}'
+        d = f'ItemCode = {self.ItemCode_2020}'
+        e = f'Description = {self.Description_2020}'
+        f = f'Unit = {self.Unit_2020}'
         return ', '.join( [a, b, c, d, e, f] )
 
 
@@ -92,7 +119,8 @@ class Bid(Base):
 
     BidID = Column(Integer, primary_key=True, unique=True)
     ContractID = Column(Integer, ForeignKey("Contract.ContractID"))
-    ItemID = Column(Integer, ForeignKey("Item.ItemID"))
+    ItemID = Column(Integer)
+    SpecYear = Column(Integer)
     Quantity = Column(Float)
     Engineer_UnitPrice = Column(Float)
     Engineer_TotalPrice = Column(Float)

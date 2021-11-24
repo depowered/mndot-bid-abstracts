@@ -1,13 +1,15 @@
 from build.abstract import AbstractData
 import pandas as pd
 from abc import ABC, abstractmethod
-from data.model import Bid, Bidder, Contract, Item
+from data.model import Bid, Bidder, Contract, Item2018, Item2020
 from typing import Union
+from data.unique_items import unique_item_set
 
 
-#
+###########################
 # Format helper functions
-#
+###########################
+
 def get_item_number_as_int(item_number: str):
     '''Convert ItemNumber string to int'''
     return int(item_number.replace('/', '').replace('.', ''))
@@ -25,10 +27,10 @@ def get_unique_bid_id( item_number: str, contract_id: int):
     return int(unique_id)
 
 
-#
+############################################################################
 # Table classes for each subtable from an abstract with interfaces defined 
 # by an abstract base class
-#
+############################################################################
 
 class DataTable(ABC):
 
@@ -157,6 +159,9 @@ class BidTable(DataTable):
         output_df['ItemID'] = self.input_df['ItemNumber'].apply(
             get_item_number_as_int
         )
+        output_df['SpecYear'] = self.input_df['ItemNumber'].apply(
+            unique_item_set.get_spec_year
+        )
         output_df['Quantity'] = self.input_df['Quantity']
         output_df['Engineer_UnitPrice'] = self.input_df['Engineers (Unit Price)']
         output_df['Engineer_TotalPrice'] = self.input_df['Engineers (Extended Amount)']
@@ -210,8 +215,9 @@ class BidTable(DataTable):
 
 
 class ItemTable(DataTable):
-    def __init__(self, input_data: str) -> None:
+    def __init__(self, input_data: str, year: int) -> None:
         self.table: str = 'Item'
+        self.year = year
         self.input_data = input_data
         self.input_df = pd.read_csv(self.input_data)
         self.output_df = self.create_output_df()
@@ -219,7 +225,7 @@ class ItemTable(DataTable):
 
 
     def create_output_df(self) -> pd.DataFrame:
-        columns = Item().__table__.columns.keys()
+        columns = Item2018().__table__.columns.keys()
         output_df = pd.DataFrame(columns=columns)
 
         output_df['ItemID'] = self.input_df['Item Number'].apply(
@@ -240,17 +246,43 @@ class ItemTable(DataTable):
         return output_df
 
 
-    def create_records(self) -> list[Item]:
+    def create_records_2018(self) -> list[Item2018]:
         db_records = []
         for row in self.output_df.itertuples(index=False, name='ItemTable'):
-            record = Item(
-                ItemID = row.ItemID,
-                SpecCode = row.SpecCode,
-                UnitCode = row.UnitCode,
-                ItemCode = row.ItemCode,
-                Description = row.Description,
-                Unit = row.Unit
+            record = Item2018(
+                ItemID_2018 = row.ItemID,
+                SpecCode_2018 = row.SpecCode,
+                UnitCode_2018 = row.UnitCode,
+                ItemCode_2018 = row.ItemCode,
+                Description_2018 = row.Description,
+                Unit_2018 = row.Unit
             )
             db_records.append(record)
 
         return db_records
+
+
+    def create_records_2020(self) -> list[Item2020]:
+        db_records = []
+        for row in self.output_df.itertuples(index=False, name='ItemTable'):
+            record = Item2020(
+                ItemID_2020 = row.ItemID,
+                SpecCode_2020 = row.SpecCode,
+                UnitCode_2020 = row.UnitCode,
+                ItemCode_2020 = row.ItemCode,
+                Description_2020 = row.Description,
+                Unit_2020 = row.Unit,
+                Item2018_ID = None
+            )
+            db_records.append(record)
+
+        return db_records
+
+
+    def create_records(self):
+        if self.year == 2020:
+            return self.create_records_2020()
+        elif self.year == 2018:
+            return self.create_records_2018()
+        else:
+            raise ValueError
