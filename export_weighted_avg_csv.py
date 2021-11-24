@@ -10,8 +10,8 @@ def get_df_by_year(bid_df: pd.DataFrame, year: int) -> pd.DataFrame:
 
 
 def filter_by_bidder(bid_year_df: pd.DataFrame, bidder_category: str):
-    '''Returns a GroupBy object filtered by bidder and grouped by ItemID.
-    Bidder options: "Engineer", "BidderID_0", "BidderID_1", "BidderID_2".'''
+    '''Returns a GroupBy object filtered by bidder_category and grouped by ItemID.
+    bidder_category options: "Engineer", "BidderID_0", "BidderID_1", "BidderID_2".'''
 
     column = bidder_category + '_TotalPrice'
     filt = bid_year_df[column].notna()  # filter df_in for specified bidder
@@ -21,8 +21,8 @@ def filter_by_bidder(bid_year_df: pd.DataFrame, bidder_category: str):
 
 
 def calc_contract_occur(bid_year_df: pd.DataFrame, bidder_category: str):
-    '''Returns a series of the contract occurnace count for all items for a given bidder.
-    Bidder options: "Engineer", "BidderID_0", "BidderID_1", "BidderID_2".'''
+    '''Returns a series of the contract occurrence count for all items for a given bidder_category.
+    bidder_category options: "Engineer", "BidderID_0", "BidderID_1", "BidderID_2".'''
 
     column = bidder_category + '_TotalPrice'
     grp = filter_by_bidder(bid_year_df, bidder_category)
@@ -31,8 +31,8 @@ def calc_contract_occur(bid_year_df: pd.DataFrame, bidder_category: str):
 
 
 def calc_weighted_avg(bid_year_df: pd.DataFrame, bidder_category: str):
-    '''Returns the weighted average for all items for a given bidder.
-    Bidder options: "Engineer", "BidderID_0", "BidderID_1", "BidderID_2".'''
+    '''Returns the weighted average for all items for a given bidder_category.
+    bidder_category options: "Engineer", "BidderID_0", "BidderID_1", "BidderID_2".'''
 
     column = bidder_category + '_TotalPrice'
     grp = filter_by_bidder(bid_year_df, bidder_category)
@@ -42,7 +42,7 @@ def calc_weighted_avg(bid_year_df: pd.DataFrame, bidder_category: str):
 
 def get_weighted_avg_by_year(item_df: pd.DataFrame, bid_df: pd.DataFrame, year: int) -> pd.DataFrame:
     '''Returns dataframe of weighted average unit prices and contract occurrences
-    for each bidder category ('Engineer', 'BidderID_0', 'BidderID_1', 'BidderID_2').'''
+    for each bidder_category.'''
 
     bidder_category = ['Engineer', 'BidderID_0', 'BidderID_1', 'BidderID_2']
     bid_year_df = get_df_by_year(bid_df=bid_df, year=year)
@@ -72,25 +72,35 @@ def create_weighted_avg_df(item_df: pd.DataFrame, bid_df: pd.DataFrame) -> pd.Da
     return df
 
 
-with engine.connect() as conn:
-    # create item list dataframe
-    item_select = select(Item.ItemID, Item.Description, Item.Unit)
-    item_df = pd.read_sql(item_select, con=conn, index_col='ItemID')
+def export_weighted_avg_to_csv(filename: str):
+    with engine.connect() as conn:
+        # create item list dataframe
+        item_select = select(Item.ItemID, Item.Description, Item.Unit)
+        item_df = pd.read_sql(item_select, con=conn, index_col='ItemID')
 
-    # create bid data dataframe
-    bid_select = (
-        select(
-            Bid,
-            Contract.Year,
-            Contract.District,
-            Contract.County,
-        ).
-        join(Contract, onclause=Bid.ContractID==Contract.ContractID)
-    )
-    bid_df = pd.read_sql(bid_select, con=conn)
+        # create bid data dataframe
+        bid_select = (
+            select(
+                Bid,
+                Contract.Year,
+                Contract.District,
+                Contract.County,
+            ).
+            join(Contract, onclause=Bid.ContractID==Contract.ContractID)
+        )
+        bid_df = pd.read_sql(bid_select, con=conn)
 
-# create weighted average dataframe
-df = create_weighted_avg_df(item_df=item_df, bid_df=bid_df)
+    # create weighted average dataframe
+    df = create_weighted_avg_df(item_df=item_df, bid_df=bid_df)
 
-# export weighted average dataframe to csv
-df.to_csv('exports/Spec2018_weighted_average_all.csv')
+    # export weighted average dataframe to csv
+    df.to_csv(filename)
+
+
+def main():
+    filename = 'exports/Spec2018_weighted_average_all.csv'
+    export_weighted_avg_to_csv(filename=filename)
+
+
+if __name__ == '__main__':
+    main()

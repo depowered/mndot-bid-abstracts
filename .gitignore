@@ -19,3 +19,10 @@ geckodriver.log
 
 # Ignore .txt files
 *.txt
+
+# Ignore .xls & .xlsx
+*.xls
+*.xlsx
+
+# Ignore vscode settings
+.vscode
